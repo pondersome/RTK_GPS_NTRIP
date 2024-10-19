@@ -1,0 +1,30 @@
+{
+    "python.autoComplete.extraPaths": [
+        "/home/karim/ros2_ws/install/ublox_msgs/local/lib/python3.10/dist-packages",
+        "/home/karim/ros2_ws/build/scripted_bot_driver",
+        "/home/karim/ros2_ws/install/scripted_bot_driver/lib/python3.10/site-packages",
+        "/home/karim/ros2_ws/build/generic_turtlesim",
+        "/home/karim/ros2_ws/install/generic_turtlesim/lib/python3.10/site-packages",
+        "/home/karim/ros2_ws/install/scripted_bot_interfaces/local/lib/python3.10/dist-packages",
+        "/home/karim/ros2_ws/install/rtcm_msgs/local/lib/python3.10/dist-packages",
+        "/home/karim/ros2_ws/install/p2os_msgs/local/lib/python3.10/dist-packages",
+        "/home/karim/ros2_ws/build/ntrip_client/src",
+        "/home/karim/ros2_ws/install/ntrip_client/lib/python3.10/site-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "/home/karim/ros2_ws/install/ublox_msgs/local/lib/python3.10/dist-packages",
+        "/home/karim/ros2_ws/build/scripted_bot_driver",
+        "/home/karim/ros2_ws/install/scripted_bot_driver/lib/python3.10/site-packages",
+        "/home/karim/ros2_ws/build/generic_turtlesim",
+        "/home/karim/ros2_ws/install/generic_turtlesim/lib/python3.10/site-packages",
+        "/home/karim/ros2_ws/install/scripted_bot_interfaces/local/lib/python3.10/dist-packages",
+        "/home/karim/ros2_ws/install/rtcm_msgs/local/lib/python3.10/dist-packages",
+        "/home/karim/ros2_ws/install/p2os_msgs/local/lib/python3.10/dist-packages",
+        "/home/karim/ros2_ws/build/ntrip_client/src",
+        "/home/karim/ros2_ws/install/ntrip_client/lib/python3.10/site-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ]
+}

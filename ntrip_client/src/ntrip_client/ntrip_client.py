@@ -148,7 +148,8 @@ class NTRIPClient:
     elif any(unauthorized in response for unauthorized in _UNAUTHORIZED_RESPONSES):
       self._logwarn('Received unauthorized response from the server. Check your username, password, and mountpoint to make sure they are correct.')
       known_error = True
-    elif not self._connected and (self._ntrip_version == None or self._ntrip_version == ''):
+    elif not self._connected:  # and (self._ntrip_version == None or self._ntrip_version == ''):
+      self._logwarn(response)
       self._logwarn('Received unknown error from the server. Note that the NTRIP version was not specified in the launch file. This is not necesarilly the cause of this error, but it may be worth checking your NTRIP casters documentation to see if the NTRIP version needs to be specified.')
       known_error = True
 
@@ -195,7 +196,7 @@ class NTRIPClient:
           self._logerr('Reconnect to http://{}:{} failed. Retrying in {} seconds'.format(self._host, self._port, self.reconnect_attempt_wait_seconds))
           time.sleep(self.reconnect_attempt_wait_seconds)
         elif self._reconnect_attempt_count >= self.reconnect_attempt_max:
-          self._reconnect_attempt_count = 0
+          # self._reconnect_attempt_count = 0
           raise Exception("Reconnect was attempted {} times, but never succeeded".format(self._reconnect_attempt_count))
           break
         elif connect_success:

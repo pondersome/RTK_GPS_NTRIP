@@ -1,0 +1,32 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/karim/ros2_ws/install/ublox_gps/include/**",
+        "/home/karim/ros2_ws/install/ublox_msgs/include/**",
+        "/home/karim/ros2_ws/install/ublox_serialization/include/**",
+        "/home/karim/ros2_ws/install/scripted_bot_interfaces/include/**",
+        "/home/karim/ros2_ws/install/rtcm_msgs/include/**",
+        "/home/karim/ros2_ws/install/p2os_msgs/include/**",
+        "/opt/ros/humble/include/**",
+        "/home/karim/ros2_ws/src/RTK_GPS_NTRIP/ublox_gps/include/**",
+        "/home/karim/ros2_ws/src/RTK_GPS_NTRIP/ublox_msgs/include/**",
+        "/home/karim/ros2_ws/src/RTK_GPS_NTRIP/ublox_serialization/include/**",
+        "/home/karim/ros2_ws/src/p2os2/p2os_driver/include/**",
+        "/home/karim/ros2_ws/src/p2os2/p2os_teleop/include/**",
+        "/home/karim/ros2_ws/src/p2os2/p2os_urdf/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}

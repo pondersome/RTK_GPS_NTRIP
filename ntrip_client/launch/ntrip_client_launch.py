@@ -11,12 +11,13 @@ def generate_launch_description():
           # RTCM mavros_msgs
  
           DeclareLaunchArgument('host',                  default_value=''),
-          DeclareLaunchArgument('port',                  default_value=''),
+          DeclareLaunchArgument('port',                  default_value='2101'),
           DeclareLaunchArgument('mountpoint',            default_value=''), 
           DeclareLaunchArgument('ntrip_version',         default_value='None'),
-          DeclareLaunchArgument('authenticate',          default_value='True'),
+          DeclareLaunchArgument('ntrip_server_hz',       default_value='10'), # set to 1 for rtk2go
+          DeclareLaunchArgument('authenticate',          default_value=''),
           DeclareLaunchArgument('username',              default_value=''),
-          DeclareLaunchArgument('password',              default_value=''),
+          DeclareLaunchArgument('password',              default_value='none'),
           DeclareLaunchArgument('ssl',                   default_value='False'),
           DeclareLaunchArgument('cert',                  default_value='None'),
           DeclareLaunchArgument('key',                   default_value='None'),
@@ -44,6 +45,9 @@ def generate_launch_description():
 
                     # Optional parameter that will set the NTRIP version in the initial HTTP request to the NTRIP caster.
                     'ntrip_version': LaunchConfiguration('ntrip_version'),
+                    
+                    # Rate to request correction messages. Some servers will sandbox clients that request too often
+                    'ntrip_server_hz': LaunchConfiguration('ntrip_server_hz'),
 
                     # If this is set to true, we will read the username and password and attempt to authenticate. If not, we will attempt to connect unauthenticated
                     'authenticate': LaunchConfiguration('authenticate'),

@@ -5,13 +5,13 @@ ublox_gps_node:
     device: /dev/ttyACM0
     
     frame_id: gps
-    rate: 1.0                   # in Hz
-    nav_rate: 1                 
+    rate: 5.0                   # These rates correspond to UBX-CFG-RATE message. rate is the measurement rate in Hz. Triggers a measurement and raw data output.
+    nav_rate: 1                 # every (nav_rate)th measurement produces a navigation (hopefully rtk) solution. rate divided by nav_rate is the rate in hz of rtk solutions. 
                                 
     dynamic_model: portable
     
     uart1:
-      baudrate: 57600
+      baudrate: 115200
      
     gnss:
       glonass: true
@@ -35,4 +35,6 @@ ublox_gps_node:
     
     publish:
       aid/all: false
+      nav:
+        pvt: true
 

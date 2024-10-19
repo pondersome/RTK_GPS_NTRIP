@@ -30,7 +30,7 @@
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-"""Launch the ublox gps node with c94-m8p configuration."""
+"""Launch the ublox gps node with zed-f9p configuration."""
 
 import os
 

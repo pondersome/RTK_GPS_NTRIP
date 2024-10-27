@@ -144,6 +144,36 @@ bool getRosUint(rclcpp::Node* node, const std::string& key, std::vector<U> &u) {
   u.insert(u.begin(), param.begin(), param.end());
   return true;
 }
+/**
+ * @brief Alternate version to Get a unsigned integer vector from the parameter server. Avoids coercing to uint_8 vector in rclcpp internals
+ * @throws std::runtime_error if the parameter is out of bounds.
+ * @return true if found, false if not found.
+*/
+template <typename U>
+bool getRosUintAlt(rclcpp::Node* node, const std::string& key, std::vector<U> &u) {
+  rclcpp::Parameter parameter_variant;
+
+  // Retrieve as generic Parameter to access type directly
+  if (!node->get_parameter(key, parameter_variant)) {
+    return false;
+  }
+
+  // Check if it's an integer array, and perform manual conversion if necessary
+  if (parameter_variant.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER_ARRAY) {
+    const std::vector<int64_t> &int_values = parameter_variant.as_integer_array();
+    u.clear();
+    for (const int64_t &value : int_values) {
+      if (value < std::numeric_limits<U>::min() || value > std::numeric_limits<U>::max()) {
+        throw std::runtime_error("Parameter " + key + " value out of bounds: " + std::to_string(value));
+      }
+      u.push_back(static_cast<U>(value));
+    }
+    return true;
+  }
+
+  // Handle other cases if required (like logging or returning an error)
+  throw std::runtime_error("Parameter " + key + " is not of type integer array.");
+}
 
 static inline bool getRosBoolean(rclcpp::Node* node, const std::string &name)
 {

@@ -387,6 +387,9 @@ void UbloxNode::getRosParams() {
 
   // NMEA parameters
   this->declare_parameter("nmea.set", false);
+  this->declare_parameter("nmea.version", 65);
+  this->declare_parameter("nmea.num_sv", 8);
+  this->declare_parameter("nmea.sv_numbering", 1);
   this->declare_parameter("nmea.compat", false);
   this->declare_parameter("nmea.consider", false);
   this->declare_parameter("nmea.limit82", false);
@@ -403,6 +406,9 @@ void UbloxNode::getRosParams() {
   this->declare_parameter("nmea.gnssToFilter.qzss", false);
   this->declare_parameter("nmea.gnssToFilter.glonass", false);
   this->declare_parameter("nmea.gnssToFilter.beidou", false);
+  this->declare_parameter("nmea.main_talker_id", 1);
+  this->declare_parameter("nmea.gsv_talker_id", 1);
+  this->declare_parameter("nmea.bds_talker_id", rclcpp::PARAMETER_INTEGER_ARRAY);
 
   // Publish parameters
   this->declare_parameter("publish.all", false);

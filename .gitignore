@@ -1,2 +1,4 @@
 
 /ntrip_client/src/ntrip_client/__pycache__
+/.vscode
+.vscode/settings.json

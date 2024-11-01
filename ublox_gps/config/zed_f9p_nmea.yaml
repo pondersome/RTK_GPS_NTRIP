@@ -1,67 +1,68 @@
 # Configuration Settings for ZED-F9P
-ublox_gps_node:
-  ros__parameters:
-    debug: 1                    # Range 0-4 (0 means no debug statements will print)
-    device: /dev/ttyACM0
-    
-    frame_id: gps
-    rate: 5.0                   # These rates correspond to UBX-CFG-RATE message. rate is the measurement rate in Hz. Triggers a measurement and raw data output.
-    nav_rate: 1                 # every (nav_rate)th measurement produces a navigation (hopefully rtk) solution. rate divided by nav_rate is the rate in hz of rtk solutions. 
-                                
-    dynamic_model: portable
-    
-    uart1:
-      baudrate: 115200
-     
-    gnss:
-      glonass: true
-      beidou: true
-      gps: true
-      qzss: true
-      galileo: true
-      imes: false
-    
-    # TMODE3 Config
-    tmode3: 0                   # Survey-In Mode
-    sv_in:
-      reset: false               # True: disables and re-enables survey-in (resets)
-                                # False: Disables survey-in only if TMODE3 is
-                                # disabled
-      min_dur: 300              # Survey-In Minimum Duration [s]
-      acc_lim: 3.0              # Survey-In Accuracy Limit [m]
-
-    inf:
-      all: true                   # Whether to display all INF messages in console
-    
-    publish:
-      aid/all: false
-      nav:
-        pvt: true
-
-    # Sample NMEA parameter configuration
-
-    nmea:
-      set: true
-      version: 65
-      num_sv: 8
-      sv_numbering: 1
-      compat: true
-      consider: true
-      limit82: true
-      high_prec: true
-      filter:
-        pos: true
-        msk_pos: true
-        time: true
-        date: true
-        gps_only: true
-        track: true
-      gnssToFilter:
-        gps: false
-        sbas: true
-        qzss: true
-        glonass: false
+/**:  #namespace wildcard allows these parameters to be found by this node running in any robot namespace
+  ublox_gps_node:
+    ros__parameters:
+      debug: 1                    # Range 0-4 (0 means no debug statements will print)
+      device: /dev/ttyACM0
+      
+      frame_id: gps
+      rate: 5.0                   # These rates correspond to UBX-CFG-RATE message. rate is the measurement rate in Hz. Triggers a measurement and raw data output.
+      nav_rate: 1                 # every (nav_rate)th measurement produces a navigation (hopefully rtk) solution. rate divided by nav_rate is the rate in hz of rtk solutions. 
+                                  
+      dynamic_model: portable
+      
+      uart1:
+        baudrate: 115200
+      
+      gnss:
+        glonass: true
         beidou: true
-      main_talker_id: 1
-      gsv_talker_id: 1
-      bds_talker_id: [0x01, 0x02]
+        gps: true
+        qzss: true
+        galileo: true
+        imes: false
+      
+      # TMODE3 Config
+      tmode3: 0                   # Survey-In Mode
+      sv_in:
+        reset: false               # True: disables and re-enables survey-in (resets)
+                                  # False: Disables survey-in only if TMODE3 is
+                                  # disabled
+        min_dur: 300              # Survey-In Minimum Duration [s]
+        acc_lim: 3.0              # Survey-In Accuracy Limit [m]
+
+      inf:
+        all: true                   # Whether to display all INF messages in console
+      
+      publish:
+        aid/all: false
+        nav:
+          pvt: true
+
+      # Sample NMEA parameter configuration
+
+      nmea:
+        set: true
+        version: 65
+        num_sv: 8
+        sv_numbering: 1
+        compat: true
+        consider: true
+        limit82: true
+        high_prec: true
+        filter:
+          pos: true
+          msk_pos: true
+          time: true
+          date: true
+          gps_only: true
+          track: true
+        gnssToFilter:
+          gps: false
+          sbas: true
+          qzss: true
+          glonass: false
+          beidou: true
+        main_talker_id: 1
+        gsv_talker_id: 1
+        bds_talker_id: [0x01, 0x02]

@@ -21,9 +21,11 @@ In order to build you must have nmea installed
 sudo apt-get install ros-$ROS_DISTRO-nmea-msgs
 
 ## Or, one file to run them all, and in the darkness bind them
-One launch file can bring up all 3 nodes together. Command line parameters can be passed to the NTRIP client like this:
+One launch file can bring up all 3 nodes together. This launch file optionally supports **namespace** to isolate nodes/topics from other robots on the same DDS network, and/or **group** to isolate these rtk nodes from other subsystems on the robot. Command line parameters can be passed to the NTRIP client like this:
 
 ```bash
-ros2 launch rtk_bringup gps_rtk_launch.py host:=rtk2go.com mountpoint:=MyRealMtPt ntrip_server_hz:=1 \
+ros2 launch rtk_bringup gps_rtk_launch.py namespace:=mybot group:=rtk \
+ host:=rtk2go.com mountpoint:=MyRealMtPt ntrip_server_hz:=1 \
  authenticate:=true username:=myrealemail@provider.com password:=none
 ```
+Default **namespace** or **group** parameters can be removed by sending in a slash from the command line.

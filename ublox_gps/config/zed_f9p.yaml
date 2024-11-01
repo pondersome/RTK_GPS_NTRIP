@@ -1,39 +1,41 @@
 # Configuration Settings for ZED-F9P
-ublox_gps_node:
-  ros__parameters:
-    debug: 1                    # Range 0-4 (0 means no debug statements will print)
-    device: /dev/ttyACM0
+/**:  #namespace wildcard allows these parameters to be found by this node running in any robot namespace
+  ublox_gps_node:
+    ros__parameters:
     
-    frame_id: gps
-    rate: 5.0                   # These rates correspond to UBX-CFG-RATE message. rate is the measurement rate in Hz. Triggers a measurement and raw data output.
-    nav_rate: 1                 # every (nav_rate)th measurement produces a navigation (hopefully rtk) solution. rate divided by nav_rate is the rate in hz of rtk solutions. 
-                                
-    dynamic_model: portable
-    
-    uart1:
-      baudrate: 115200
-     
-    gnss:
-      glonass: true
-      beidou: true
-      gps: true
-      qzss: true
-      galileo: true
-      imes: false
-    
-    # TMODE3 Config
-    tmode3: 0                   # Survey-In Mode
-    sv_in:
-      reset: false               # True: disables and re-enables survey-in (resets)
-                                # False: Disables survey-in only if TMODE3 is
-                                # disabled
-      min_dur: 300              # Survey-In Minimum Duration [s]
-      acc_lim: 3.0              # Survey-In Accuracy Limit [m]
+        debug: 1                    # Range 0-4 (0 means no debug statements will print)
+        device: /dev/ttyACM0
+        
+        frame_id: gps
+        rate: 5.0                   # These rates correspond to UBX-CFG-RATE message. rate is the measurement rate in Hz. Triggers a measurement and raw data output.
+        nav_rate: 1                 # every (nav_rate)th measurement produces a navigation (hopefully rtk) solution. rate divided by nav_rate is the rate in hz of rtk solutions. 
+                                    
+        dynamic_model: portable
+        
+        uart1:
+          baudrate: 115200
+        
+        gnss:
+          glonass: true
+          beidou: true
+          gps: true
+          qzss: true
+          galileo: true
+          imes: false
+        
+        # TMODE3 Config
+        tmode3: 0                   # Survey-In Mode
+        sv_in:
+          reset: false               # True: disables and re-enables survey-in (resets)
+                                    # False: Disables survey-in only if TMODE3 is
+                                    # disabled
+          min_dur: 300              # Survey-In Minimum Duration [s]
+          acc_lim: 3.0              # Survey-In Accuracy Limit [m]
 
-    inf:
-      all: true                   # Whether to display all INF messages in console
-    
-    publish:
-      aid/all: false
-      nav:
-        pvt: true
+        inf:
+          all: true                   # Whether to display all INF messages in console
+        
+        publish:
+          aid/all: false
+          nav:
+            pvt: true

@@ -86,10 +86,10 @@ def generate_launch_description():
 
                       # Will affect how many times the node will attempt to reconnect before exiting, and how long it will wait in between attempts when a reconnect occurs
                       'reconnect_attempt_max': 10,
-                      'reconnect_attempt_wait_seconds': 5,
+                      'reconnect_attempt_wait_seconds': 10, #was 5, changed per rtk2go reqs
 
                       # How many seconds is acceptable in between receiving RTCM. If RTCM is not received for this duration, the node will attempt to reconnect
-                      'rtcm_timeout_seconds': 4
+                      'rtcm_timeout_seconds': 10 #was 4 changed for rtk2go reqs
                     }
                   ],
                   # Uncomment the following section and replace "/gq7/nmea/sentence" with the topic you are sending NMEA on if it is not the one we requested

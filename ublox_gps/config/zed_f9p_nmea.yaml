@@ -38,6 +38,7 @@
         aid/all: false
         nav:
           pvt: true
+          sig: true
 
       # Sample NMEA parameter configuration
 

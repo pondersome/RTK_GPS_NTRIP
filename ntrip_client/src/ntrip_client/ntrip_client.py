@@ -26,9 +26,9 @@ _UNAUTHORIZED_RESPONSES = [
 class NTRIPClient:
 
   # Public constants
-  DEFAULT_RECONNECT_ATTEMPT_MAX = 10
-  DEFAULT_RECONNECT_ATEMPT_WAIT_SECONDS = 10 #was 5 - changed for rtk2go reqs
-  DEFAULT_RTCM_TIMEOUT_SECONDS = 10 #was 4 - changed for rtk2go reqs
+  DEFAULT_RECONNECT_ATEMPT_WAIT_SECONDS = 5
+  DEFAULT_RECONNECT_ATTEMPT_WAIT_MAX_SECONDS = 120
+  DEFAULT_RTCM_TIMEOUT_SECONDS = 10
 
   def __init__(self, host, port, mountpoint, ntrip_version, username, password, logerr=logging.error, logwarn=logging.warning, loginfo=logging.info, logdebug=logging.debug):
     # Bit of a strange pattern here, but save the log functions so we can be agnostic of ROS
@@ -85,9 +85,14 @@ class NTRIPClient:
     self._first_rtcm_received = False
     self._recv_rtcm_last_packet_timestamp = 0
 
+    # Reconnect scheduling (non-blocking)
+    self._reconnect_pending = False
+    self._reconnect_next_time = 0
+    self._current_backoff = 0
+
     # Public reconnect info
-    self.reconnect_attempt_max = self.DEFAULT_RECONNECT_ATTEMPT_MAX
     self.reconnect_attempt_wait_seconds = self.DEFAULT_RECONNECT_ATEMPT_WAIT_SECONDS
+    self.reconnect_attempt_wait_max_seconds = self.DEFAULT_RECONNECT_ATTEMPT_WAIT_MAX_SECONDS
     self.rtcm_timeout_seconds = self.DEFAULT_RTCM_TIMEOUT_SECONDS
 
   def connect(self):
@@ -186,24 +191,45 @@ class NTRIPClient:
       self._logdebug('Encountered exception when closing the socket. This can likely be ignored')
       self._logdebug('Exception: {}'.format(e))
 
-  def reconnect(self):
-    if self._connected:
-      while not self._shutdown:
-        self._reconnect_attempt_count += 1
-        self.disconnect()
-        connect_success = self.connect()
-        if not connect_success and self._reconnect_attempt_count < self.reconnect_attempt_max:
-          self._logerr('Reconnect to http://{}:{} failed. Retrying in {} seconds'.format(self._host, self._port, self.reconnect_attempt_wait_seconds))
-          time.sleep(self.reconnect_attempt_wait_seconds)
-        elif self._reconnect_attempt_count >= self.reconnect_attempt_max:
-          # self._reconnect_attempt_count = 0
-          raise Exception("Reconnect was attempted {} times, but never succeeded".format(self._reconnect_attempt_count))
-          break
-        elif connect_success:
-          self._reconnect_attempt_count = 0
-          break
-    else:
-      self._logdebug('Reconnect called while still connected, ignoring')
+  def request_reconnect(self):
+    """Schedule a non-blocking reconnect. The actual attempt happens in try_reconnect()."""
+    if self._reconnect_pending:
+      return
+    self.disconnect()
+    self._reconnect_pending = True
+    self._reconnect_attempt_count = 0
+    self._current_backoff = self.reconnect_attempt_wait_seconds
+    self._reconnect_next_time = time.time() + self._current_backoff
+    self._logwarn('Connection lost. Will retry in {} seconds'.format(self._current_backoff))
+
+  def try_reconnect(self):
+    """Attempt one reconnect if the backoff timer has elapsed. Returns True if connected."""
+    if not self._reconnect_pending:
+      return self._connected
+
+    now = time.time()
+    if now < self._reconnect_next_time:
+      return False
+
+    self._reconnect_attempt_count += 1
+    connect_success = self.connect()
+    if connect_success:
+      self._loginfo('Reconnected after {} attempts'.format(self._reconnect_attempt_count))
+      self._reconnect_pending = False
+      self._reconnect_attempt_count = 0
+      self._first_rtcm_received = False
+      return True
+
+    # Exponential backoff: double the wait, capped at max
+    self._current_backoff = min(self._current_backoff * 2, self.reconnect_attempt_wait_max_seconds)
+    self._reconnect_next_time = now + self._current_backoff
+    self._logerr('Reconnect attempt {} to http://{}:{} failed. Retrying in {} seconds'.format(
+      self._reconnect_attempt_count, self._host, self._port, self._current_backoff))
+    return False
+
+  @property
+  def reconnecting(self):
+    return self._reconnect_pending
 
   def send_nmea(self, sentence):
     if not self._connected:
@@ -229,13 +255,17 @@ class NTRIPClient:
       self._logwarn('Exception: {}'.format(str(e)))
       self._nmea_send_failed_count += 1
       if self._nmea_send_failed_count >= self._nmea_send_failed_max:
-        self._logwarn("NMEA sentence failed to send to server {} times, restarting".format(self._nmea_send_failed_count))
-        self.reconnect()
+        self._logwarn("NMEA sentence failed to send to server {} times, reconnecting".format(self._nmea_send_failed_count))
+        self.request_reconnect()
         self._nmea_send_failed_count = 0
-        self.send_nmea(sentence)  # Try sending the NMEA sentence again
 
 
   def recv_rtcm(self):
+    # If a reconnect is in progress, try it and return empty until connected
+    if self._reconnect_pending:
+      self.try_reconnect()
+      return []
+
     if not self._connected:
       self._logwarn(
         'RTCM requested before client was connected, returning empty list')
@@ -244,8 +274,8 @@ class NTRIPClient:
     # If it has been too long since we received an RTCM packet, reconnect
     if time.time() - self.rtcm_timeout_seconds >= self._recv_rtcm_last_packet_timestamp and self._first_rtcm_received:
       self._logerr('RTCM data not received for {} seconds, reconnecting'.format(self.rtcm_timeout_seconds))
-      self.reconnect()
-      self._first_rtcm_received = False
+      self.request_reconnect()
+      return []
 
     # Check if there is any data available on the socket
     read_sockets, _, _ = select.select([self._server_socket], [], [], 0)
@@ -265,7 +295,7 @@ class NTRIPClient:
         self._logerr('Error while reading {} bytes from socket'.format(_CHUNK_SIZE))
         if not self._socket_is_open():
           self._logerr('Socket appears to be closed. Reconnecting')
-          self.reconnect()
+          self.request_reconnect()
           return []
         break
     self._logdebug('Read {} bytes'.format(len(data)))
@@ -276,7 +306,7 @@ class NTRIPClient:
       self._read_zero_bytes_count += 1
       if self._read_zero_bytes_count >= self._read_zero_bytes_max:
         self._logwarn('Reconnecting because we received 0 bytes from the socket even though it said there was data available {} times'.format(self._read_zero_bytes_count))
-        self.reconnect()
+        self.request_reconnect()
         self._read_zero_bytes_count = 0
         return []
     else:

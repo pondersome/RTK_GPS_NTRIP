@@ -183,13 +183,13 @@ class NTRIPRos(Node):
     self._latest_nmea = nmea.sentence
 
   def send_rtcm_and_nmea(self):
-    # Send cached NMEA data if available
-    if self._latest_nmea is not None:
-      self._client.send_nmea(self._latest_nmea)
-
-    # Request and publish RTCM data
+    # Request and publish RTCM data (also drives reconnect attempts)
     for raw_rtcm in self._client.recv_rtcm():
       self._rtcm_pub.publish(self._create_rtcm_message(raw_rtcm))
+
+    # Send cached NMEA data if connected (skip during reconnect to avoid log spam)
+    if self._latest_nmea is not None and not self._client.reconnecting:
+      self._client.send_nmea(self._latest_nmea)
 
     # Publish a confirmation message to indicate the send_rtcm_and_nmea call
     confirmation_msg = String()

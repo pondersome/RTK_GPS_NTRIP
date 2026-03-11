@@ -155,17 +155,17 @@ class NTRIPRos(Node):
     self._client.rtcm_timeout_seconds = self.get_parameter('rtcm_timeout_seconds').value
 
   def run(self):
-    # Connect the client
+    # Attempt initial connection; if it fails, enter backoff retry instead of exiting
     if not self._client.connect():
-      self.get_logger().error('Unable to connect to NTRIP server')
-      return False
-    
+      self.get_logger().warning('Initial connection to NTRIP server failed, will retry with backoff')
+      self._client.request_reconnect(reason='Initial connection failed')
+
     # Setup the subscriber for NMEA data
     self._nmea_sub = self.create_subscription(Sentence, 'nmea', self.subscribe_nmea, 10)
 
     # Start the timer that will send both RTCM and NMEA data at the configured rate
     self._rtcm_timer = self.create_timer(self.rtcm_request_rate, self.send_rtcm_and_nmea)
-    
+
     return True
 
   def stop(self):
@@ -215,20 +215,13 @@ class NTRIPRos(Node):
     )
 
 if __name__ == '__main__':
-  # Start the node
   rclpy.init()
   node = NTRIPRos()
-  if not node.run():
-    sys.exit(1)
+  node.run()
   try:
-    # Spin until we are shut down
     rclpy.spin(node)
   except KeyboardInterrupt:
     pass
-  except BaseException as e:
-    raise e
   finally:
     node.stop()
-    
-    # Shutdown the node and stop rclpy
     rclpy.shutdown()

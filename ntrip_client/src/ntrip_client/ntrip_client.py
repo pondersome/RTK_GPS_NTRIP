@@ -191,7 +191,7 @@ class NTRIPClient:
       self._logdebug('Encountered exception when closing the socket. This can likely be ignored')
       self._logdebug('Exception: {}'.format(e))
 
-  def request_reconnect(self):
+  def request_reconnect(self, reason='Connection lost'):
     """Schedule a non-blocking reconnect. The actual attempt happens in try_reconnect()."""
     if self._reconnect_pending:
       return
@@ -200,7 +200,7 @@ class NTRIPClient:
     self._reconnect_attempt_count = 0
     self._current_backoff = self.reconnect_attempt_wait_seconds
     self._reconnect_next_time = time.time() + self._current_backoff
-    self._logwarn('Connection lost. Will retry in {} seconds'.format(self._current_backoff))
+    self._logwarn('{}. Will retry in {} seconds'.format(reason, self._current_backoff))
 
   def try_reconnect(self):
     """Attempt one reconnect if the backoff timer has elapsed. Returns True if connected."""

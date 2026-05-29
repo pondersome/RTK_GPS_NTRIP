@@ -87,6 +87,13 @@ class AsyncWorker final : public Worker {
   void setRawDataCallback(const WorkerRawCallback& callback) override { raw_callback_ = callback; }
 
   /**
+   * @brief Set the callback invoked on fatal stream errors / EOF.
+   * Fires at most once per worker (latched). After firing, the read
+   * loop stops re-arming so the worker becomes inert pending teardown.
+   */
+  void setErrorCallback(const WorkerErrorCallback& callback) override { error_callback_ = callback; }
+
+  /**
    * @brief Send the data bytes via the I/O stream.
    * @param data the buffer of data bytes to send
    * @param size the size of the buffer
@@ -140,8 +147,10 @@ class AsyncWorker final : public Worker {
                                                        //!< service
   WorkerCallback read_callback_; //!< Callback function to handle received messages
   WorkerRawCallback raw_callback_; //!< Callback function to handle raw data
+  WorkerErrorCallback error_callback_; //!< Fatal-error notification (see worker.hpp)
 
   bool stopping_; //!< Whether or not the I/O service is closed
+  bool fatal_error_fired_ = false; //!< Latch: error callback fires at most once
 
   int debug_; //!< Used to determine which debug messages to display
 
@@ -279,6 +288,24 @@ template <typename StreamT>
 void AsyncWorker<StreamT>::readEnd(const asio::error_code& error,
                                    std::size_t bytes_transferred) {
   std::lock_guard<std::mutex> lock(read_mutex_);
+  // Classify the error to decide whether this is recoverable spin-and-
+  // retry territory (logging only, original behavior) or a fatal stream
+  // condition that needs application-level reconnect.
+  //
+  // Fatal: EOF (USB drop returns this), broken_pipe, not_connected,
+  // no_such_device (kernel cdev gone). Also any 0-byte read with no
+  // error — same EOF semantics. Pre-2026-05-29 the readEnd path would
+  // spin-loop logging "transferred zero bytes" forever on a dead fd
+  // because the re-arm at the bottom is unconditional. That's the
+  // same shape as the p2os EOF hot-spin we just fixed.
+  //
+  // NOT fatal: operation_aborted (this is what we get when our own
+  // doClose closes the stream from another thread during clean
+  // shutdown — must not fire the error callback for that).
+  const bool fatal =
+      (error && error != asio::error::operation_aborted) ||
+      (!error && bytes_transferred == 0);
+
   if (error) {
     RCLCPP_ERROR(logger_, "U-Blox ASIO input buffer read error: %s, %li",
                  error.message().c_str(),
@@ -310,7 +337,33 @@ void AsyncWorker<StreamT>::readEnd(const asio::error_code& error,
 
     read_condition_.notify_all();
   } else {
-    RCLCPP_ERROR(logger_, "U-Blox ASIO transferred zero bytes");
+    RCLCPP_ERROR(logger_, "U-Blox ASIO transferred zero bytes (EOF on stream)");
+  }
+
+  // Latch + fire the error callback exactly once. Done under read_mutex_
+  // so concurrent readEnds can't double-fire. After firing, we stop
+  // re-arming so the worker becomes inert and the application can
+  // tear it down safely.
+  if (fatal && !fatal_error_fired_) {
+    fatal_error_fired_ = true;
+    stopping_ = true;  // also blocks the re-arm below
+    if (error_callback_) {
+      RCLCPP_WARN(logger_,
+        "U-Blox: fatal stream condition — invoking error callback "
+        "(read loop will not re-arm). Reason: %s",
+        error ? error.message().c_str() : "zero-byte read (EOF)");
+      // Fire OUTSIDE the lock — the callback may call back into the
+      // worker (e.g., via setWorker tearing us down), and we don't
+      // want to hold read_mutex_ for that.
+      auto cb = error_callback_;
+      // Release the lock by exiting the scope before invoking. Since
+      // we're at the bottom of the function, just defer:
+      // (lock_guard releases on return below)
+      // Schedule via io_service post so the callback runs on the
+      // worker thread but after this stack unwinds — safer than
+      // calling it inline.
+      io_service_->post([cb]() { cb(); });
+    }
   }
 
   if (!stopping_) {

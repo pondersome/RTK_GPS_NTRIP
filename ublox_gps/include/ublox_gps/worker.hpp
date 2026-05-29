@@ -47,6 +47,14 @@ class Worker {  // NOLINT(hicpp-special-member-functions, cppcoreguidelines-spec
  public:
   using WorkerCallback = std::function<size_t(unsigned char*, std::size_t)>;
   using WorkerRawCallback = std::function<void(unsigned char*, std::size_t)>;
+  // Fatal read error notification — called from the I/O thread when
+  // the underlying stream returns EOF or an unrecoverable error code
+  // (USB drop, broken pipe). Fired at most once per worker lifetime;
+  // after firing, the worker stops re-arming reads. Application is
+  // responsible for tearing down this worker and creating a new one
+  // (e.g., Gps::resetSerial). MUST NOT call back into the worker that
+  // fired it — schedule recovery on a detached thread to be safe.
+  using WorkerErrorCallback = std::function<void()>;
 
   virtual ~Worker() = default;
 
@@ -61,6 +69,13 @@ class Worker {  // NOLINT(hicpp-special-member-functions, cppcoreguidelines-spec
    * @param callback the write callback which handles raw data
    */
   virtual void setRawDataCallback(const WorkerRawCallback& callback) = 0;
+
+  /**
+   * @brief Set the callback invoked on fatal stream errors / EOF.
+   * Default no-op for backward compatibility with consumers that
+   * predate the chassis-B USB-drop work.
+   */
+  virtual void setErrorCallback(const WorkerErrorCallback& /*callback*/) {}
 
   /**
    * @brief Send the data in the buffer.

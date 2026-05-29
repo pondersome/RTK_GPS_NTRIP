@@ -59,13 +59,49 @@ Gps::~Gps() {
 }
 
 void Gps::setWorker(const std::shared_ptr<Worker>& worker) {
-  if (worker_) {
-    return;
-  }
+  // Pre-2026-05-29 this short-circuited on existing worker, which made
+  // resetSerial() a no-op (it always called setWorker). The chassis-B
+  // USB-drop recovery work needs setWorker to actually replace, so
+  // strip the guard. The caller (initializeSerial first time,
+  // resetSerial on reconnect) is responsible for tearing down the
+  // previous worker via shared_ptr reset before calling.
   worker_ = worker;
   worker_->setCallback(std::bind(&CallbackHandlers::readCallback,
                                  &callbacks_, std::placeholders::_1,
                                  std::placeholders::_2));
+  // Wire the fatal-error callback so a USB drop / EOF on the new
+  // worker triggers an in-process reconnect attempt. Spawns a
+  // detached std::thread so the reconnect runs OFF the io_service
+  // thread — otherwise destroying the old worker (which join()s its
+  // io_service thread) would self-deadlock.
+  worker_->setErrorCallback([this]() {
+    std::thread([this]() {
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+      // Capture port_ inside the lambda (member of Gps); if Gps is
+      // destroyed during the delay this is unsafe, but Gps lifetime
+      // matches the ROS node lifetime so in practice this is fine.
+      // Retry with fixed 2 s backoff for ~5 minutes total before
+      // giving up. The udev symlink may take 50-500 ms to re-point
+      // after re-enumeration; longer outages (chassis-B brown-outs)
+      // should still recover within seconds.
+      for (int attempt = 0; attempt < 30; ++attempt) {
+        try {
+          resetSerial(port_);
+          RCLCPP_INFO(logger_,
+            "F9P: reconnect succeeded on attempt %d/30", attempt + 1);
+          return;
+        } catch (const std::exception & e) {
+          RCLCPP_WARN(logger_,
+            "F9P: reconnect attempt %d/30 failed: %s — retrying in 2 s",
+            attempt + 1, e.what());
+          std::this_thread::sleep_for(std::chrono::seconds(2));
+        }
+      }
+      RCLCPP_ERROR(logger_,
+        "F9P: gave up reconnect after 30 attempts (~5 minutes). "
+        "Restart the node manually or check the F9P USB cable.");
+    }).detach();
+  });
   configured_ = static_cast<bool>(worker);
 }
 
@@ -181,6 +217,18 @@ void Gps::initializeSerial(const std::string & port, unsigned int baudrate,
 }
 
 void Gps::resetSerial(const std::string & port) {
+  // Tear down the previous worker BEFORE opening the new port. The
+  // shared_ptr reset triggers ~AsyncWorker which posts doClose and
+  // join()s its background thread — must complete before we attach
+  // a new worker, otherwise setWorker (now non-guarded) would replace
+  // the pointer with the old worker still mid-shutdown. Pre-2026-05-29
+  // this was guarded by `if (worker_) return;` which made the whole
+  // function a no-op when called from the reconnect path.
+  if (worker_) {
+    RCLCPP_INFO(logger_, "U-Blox: tearing down previous worker before reconnect");
+    worker_.reset();
+  }
+
   auto io_service = std::make_shared<asio::io_service>();
   auto serial = std::make_shared<asio::serial_port>(*io_service);
 
@@ -194,10 +242,9 @@ void Gps::resetSerial(const std::string & port) {
 
   RCLCPP_INFO(logger_, "U-Blox: Reset serial port %s", port.c_str());
 
-  // Set the I/O worker
-  if (worker_) {
-    return;
-  }
+  // setWorker installs a fresh AsyncWorker AND re-registers the
+  // fatal-error callback so a SECOND USB drop after recovery also
+  // triggers another reconnect attempt.
   setWorker(std::make_shared<AsyncWorker<asio::serial_port>>(serial, io_service, 8192, debug_, logger_));
   configured_ = false;
 

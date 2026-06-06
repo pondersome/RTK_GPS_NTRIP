@@ -30,7 +30,13 @@ class NTRIPClient:
   DEFAULT_RECONNECT_ATTEMPT_WAIT_MAX_SECONDS = 120
   DEFAULT_RTCM_TIMEOUT_SECONDS = 10
 
-  def __init__(self, host, port, mountpoint, ntrip_version, username, password, logerr=logging.error, logwarn=logging.warning, loginfo=logging.info, logdebug=logging.debug):
+  # Default User-Agent. NOTE: rtk2go.com (SNIP) blocks the stock LORD Microstrain
+  # signature 'NTRIP ntrip_client_ros' and refuses such clients by returning the
+  # sourcetable instead of the stream. Per NTRIP it must begin with 'NTRIP '. Use a
+  # unique string that identifies this robot so we don't share a blocked signature.
+  DEFAULT_USER_AGENT = 'NTRIP ponderbotics_ntrip_client'
+
+  def __init__(self, host, port, mountpoint, ntrip_version, username, password, user_agent=DEFAULT_USER_AGENT, logerr=logging.error, logwarn=logging.warning, loginfo=logging.info, logdebug=logging.debug):
     # Bit of a strange pattern here, but save the log functions so we can be agnostic of ROS
     self._logerr = logerr
     self._logwarn = logwarn
@@ -42,6 +48,7 @@ class NTRIPClient:
     self._port = port
     self._mountpoint = mountpoint
     self._ntrip_version = ntrip_version
+    self._user_agent = user_agent if user_agent else self.DEFAULT_USER_AGENT
     if username is not None and password is not None:
       self._basic_credentials = base64.b64encode('{}:{}'.format(
         username, password).encode('utf-8')).decode('utf-8')
@@ -148,7 +155,7 @@ class NTRIPClient:
     # Some debugging hints about the kind of error we received
     known_error = False
     if any(sourcetable in response for sourcetable in _SOURCETABLE_RESPONSES):
-      self._logwarn('Received sourcetable response from the server. This probably means the mountpoint specified is not valid')
+      self._logwarn('Received sourcetable response from the server instead of the stream. This means the caster refused the stream request: either the mountpoint is not valid, or the caster is blocking this client (rtk2go blocks the stock "NTRIP ntrip_client_ros" User-Agent). Current User-Agent: {}'.format(self._user_agent))
       known_error = True
     elif any(unauthorized in response for unauthorized in _UNAUTHORIZED_RESPONSES):
       self._logwarn('Received unauthorized response from the server. Check your username, password, and mountpoint to make sure they are correct.')
@@ -324,11 +331,11 @@ class NTRIPClient:
 
   def _form_request(self):
     if self._ntrip_version != None and self._ntrip_version != '':
-      request_str = 'GET /{} HTTP/1.0\r\nNtrip-Version: {}\r\nUser-Agent: NTRIP ntrip_client_ros\r\n'.format(
-        self._mountpoint, self._ntrip_version)
+      request_str = 'GET /{} HTTP/1.0\r\nNtrip-Version: {}\r\nUser-Agent: {}\r\n'.format(
+        self._mountpoint, self._ntrip_version, self._user_agent)
     else:
-      request_str = 'GET /{} HTTP/1.0\r\nUser-Agent: NTRIP ntrip_client_ros\r\n'.format(
-        self._mountpoint)
+      request_str = 'GET /{} HTTP/1.0\r\nUser-Agent: {}\r\n'.format(
+        self._mountpoint, self._user_agent)
     if self._basic_credentials is not None:
       request_str += 'Authorization: Basic {}\r\n'.format(
         self._basic_credentials)

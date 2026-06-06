@@ -18,8 +18,9 @@ def generate_launch_description():
             DeclareLaunchArgument('node_name',             default_value='ntrip_client'),
             DeclareLaunchArgument('host',                  default_value=''),
             DeclareLaunchArgument('port',                  default_value='2101'),
-            DeclareLaunchArgument('mountpoint',            default_value=''), 
+            DeclareLaunchArgument('mountpoint',            default_value=''),
             DeclareLaunchArgument('ntrip_version',         default_value='None'),
+            DeclareLaunchArgument('user_agent',            default_value='NTRIP ponderbotics_ntrip_client', description='HTTP User-Agent sent to the caster. Must start with "NTRIP ". rtk2go blocks the stock "NTRIP ntrip_client_ros".'),
             DeclareLaunchArgument('ntrip_server_hz',       default_value='10'), # set to 1 for rtk2go
             DeclareLaunchArgument('authenticate',          default_value=''),
             DeclareLaunchArgument('username',              default_value=''),
@@ -30,6 +31,7 @@ def generate_launch_description():
             DeclareLaunchArgument('ca_cert',               default_value='None'),
             DeclareLaunchArgument('debug',                 default_value='false'),
             DeclareLaunchArgument('rtcm_message_package',  default_value='rtcm_msgs'),
+            DeclareLaunchArgument('reconnect_attempt_wait_max_seconds', default_value='120', description='Ceiling for the exponential reconnect backoff. Retries are persistent (never give up); raise this to reduce footprint during long caster outages (e.g. 600 for rtk2go DDoS/maintenance downtime).'),
           ]
 
 
@@ -53,6 +55,10 @@ def generate_launch_description():
 
                       # Optional parameter that will set the NTRIP version in the initial HTTP request to the NTRIP caster.
                       'ntrip_version': LaunchConfiguration('ntrip_version'),
+
+                      # User-Agent presented to the caster. Must start with "NTRIP ".
+                      # rtk2go blocks the stock "NTRIP ntrip_client_ros" and refuses such clients with a sourcetable response.
+                      'user_agent': LaunchConfiguration('user_agent'),
                       
                       # Rate to request correction messages. Some servers will sandbox clients that request too often
                       'ntrip_server_hz': LaunchConfiguration('ntrip_server_hz'),
@@ -84,9 +90,11 @@ def generate_launch_description():
                       # Use this parameter to change the type of RTCM message published by the node. Defaults to "mavros_msgs", but we also support "rtcm_msgs"
                       'rtcm_message_package': LaunchConfiguration('rtcm_message_package'),
 
-                      # Will affect how many times the node will attempt to reconnect before exiting, and how long it will wait in between attempts when a reconnect occurs
-                      'reconnect_attempt_max': 10,
+                      # Reconnect backoff: wait doubles from reconnect_attempt_wait_seconds up to
+                      # reconnect_attempt_wait_max_seconds, then holds at that ceiling. Retries are
+                      # persistent (no give-up) so the node recovers from long caster outages on its own.
                       'reconnect_attempt_wait_seconds': 10, #was 5, changed per rtk2go reqs
+                      'reconnect_attempt_wait_max_seconds': LaunchConfiguration('reconnect_attempt_wait_max_seconds'),
 
                       # How many seconds is acceptable in between receiving RTCM. If RTCM is not received for this duration, the node will attempt to reconnect
                       'rtcm_timeout_seconds': 10 #was 4 changed for rtk2go reqs

@@ -42,6 +42,7 @@ class NTRIPRos(Node):
         ('port', 2101),
         ('mountpoint', 'mount'),
         ('ntrip_version', 'None'),
+        ('user_agent', NTRIPClient.DEFAULT_USER_AGENT),
         ('authenticate', False),
         ('username', ''),
         ('password', ''),
@@ -69,6 +70,12 @@ class NTRIPRos(Node):
     ntrip_version = self.get_parameter('ntrip_version').value
     if ntrip_version == 'None':
       ntrip_version = None
+
+    # User-Agent presented to the caster. rtk2go blocks the stock signature, so this
+    # is configurable; an empty/'None' value falls back to the client default.
+    user_agent = self.get_parameter('user_agent').value
+    if not user_agent or user_agent == 'None':
+      user_agent = NTRIPClient.DEFAULT_USER_AGENT
 
     # Set the rate at which RTCM requests and NMEA messages are sent
     self.rtcm_request_rate = 1.0 / self.get_parameter('ntrip_server_hz').value
@@ -129,6 +136,7 @@ class NTRIPRos(Node):
       ntrip_version=ntrip_version,
       username=username,
       password=password,
+      user_agent=user_agent,
       logerr=self.get_logger().error,
       logwarn=self.get_logger().warning,
       loginfo=self.get_logger().info,

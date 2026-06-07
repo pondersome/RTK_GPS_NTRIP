@@ -11,12 +11,12 @@ This is a customized fork of the [LORD-MicroStrain ntrip_client](https://github.
 * **Configurable `User-Agent`** with a non-blocked default. rtk2go blocks the stock `NTRIP ntrip_client_ros` signature and silently refuses such clients (see [rtk2go notes](#rtk2go-and-reconnect-behavior)).
 * **Persistent reconnect** with non-blocking exponential backoff (never gives up), so the node recovers on its own from long caster outages (rtk2go DDoS / mountpoint maintenance) instead of exiting after N attempts.
 * **Configurable communication rate** (`ntrip_server_hz`) and RTCM-timeout / backoff parameters tuned for rtk2go's usage policies.
-* Runs on ROS2 Jazzy (Python shebangs fixed to `python3`).
+* Compatible with current ROS2 LTS releases (e.g. Humble, Jazzy) — uses only standard `rclpy`/`launch` APIs and `python3` shebangs, with no distro-specific dependencies.
 
 ## Build Instructions
 
 #### Building from source
-1. Install ROS2 and create a workspace: [Installing and Configuring Your ROS2 Environment](https://docs.ros.org/en/jazzy/Tutorials/Beginner-CLI-Tools/Configuring-ROS2-Environment.html)
+1. Install ROS2 and create a workspace (see the "Configuring your ROS2 environment" tutorial for your ROS2 distribution at [docs.ros.org](https://docs.ros.org/))
 
 2. Move the entire ntrip_client folder to the your_workspace/src directory.
 

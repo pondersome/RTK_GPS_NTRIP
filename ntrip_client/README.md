@@ -88,6 +88,15 @@ Topics are relative to the node's namespace (default `ntrip_client`), so by defa
 * **Persistent reconnect.** On any connection loss or failed initial connect, the node schedules a non-blocking reconnect and retries indefinitely. The wait starts at `reconnect_attempt_wait_seconds` (10s) and doubles on each failure up to `reconnect_attempt_wait_max_seconds` (default 120s), then holds at that ceiling. It never gives up, so the node recovers on its own from extended rtk2go outages (DDoS) or a mountpoint taken down for maintenance. To shrink your footprint during long outages, raise the ceiling (e.g. `reconnect_attempt_wait_max_seconds:=600`).
 * **First-connect timeout is normal.** With rtk2go the very first connect attempt frequently times out and then succeeds on the first backoff retry, even on healthy connections. This is expected.
 
+#### Known behavior: NMEA upload to a connected-but-silent mountpoint
+
+The dead-connection watchdog (`rtcm_timeout_seconds`) only arms **after the first RTCM packet arrives**. If a caster *accepts* the connection but then never delivers RTCM — e.g. a mountpoint that is **down for maintenance** while the caster still completes the GET request — the node believes it is connected and, if `send_nmea` is `true`, keeps uploading NMEA every cycle to a stream that is dead. On rtk2go this continuous upload to a silent mountpoint can trigger a ban.
+
+Mitigations by deployment type:
+
+* **Fixed-base mountpoints (e.g. rtk2go):** set `send_nmea:=false`. These mountpoints don't use your position, so no NMEA should be sent in the first place — this removes the problem at the source.
+* **VRS / virtual mountpoints:** NMEA is required (the network needs your position to synthesize the virtual base), so `send_nmea:=false` is not an option. The proper fix is to baseline the watchdog off the connect time so a connected-but-silent stream triggers reconnect even before the first packet. This is **not yet implemented** — left as documented behavior pending a VRS caster to validate against.
+
 ## Docker Integration
 
 ### VSCode

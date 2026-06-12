@@ -52,6 +52,7 @@ class NTRIPRos(Node):
         ('ca_cert', 'None'),
         ('ntrip_server_hz', 10), # set to 1hz for rtk2go
         ('rtcm_frame_id', 'odom'),
+        ('send_nmea', True),
         ('nmea_max_length', NMEA_DEFAULT_MAX_LENGTH),
         ('nmea_min_length', NMEA_DEFAULT_MIN_LENGTH),
         ('rtcm_message_package', _RTCM_MSGS_NAME),
@@ -79,6 +80,11 @@ class NTRIPRos(Node):
 
     # Set the rate at which RTCM requests and NMEA messages are sent
     self.rtcm_request_rate = 1.0 / self.get_parameter('ntrip_server_hz').value
+
+    # Whether to forward NMEA from the 'nmea' topic up to the caster. Only needed for
+    # virtual/relayed (VRS) mountpoints; disable for plain base stations to avoid the
+    # idle subscriber cost and uploading position to the caster.
+    self._send_nmea = self.get_parameter('send_nmea').value
 
     # Initialize variables to store the most recent NMEA message
     self._latest_nmea = None
@@ -168,8 +174,12 @@ class NTRIPRos(Node):
       self.get_logger().warning('Initial connection to NTRIP server failed, will retry with backoff')
       self._client.request_reconnect(reason='Initial connection failed')
 
-    # Setup the subscriber for NMEA data
-    self._nmea_sub = self.create_subscription(Sentence, 'nmea', self.subscribe_nmea, 10)
+    # Setup the subscriber for NMEA data, unless NMEA forwarding is disabled
+    self._nmea_sub = None
+    if self._send_nmea:
+      self._nmea_sub = self.create_subscription(Sentence, 'nmea', self.subscribe_nmea, 10)
+    else:
+      self.get_logger().info('send_nmea is false; not subscribing to NMEA or forwarding it to the caster')
 
     # Start the timer that will send both RTCM and NMEA data at the configured rate
     self._rtcm_timer = self.create_timer(self.rtcm_request_rate, self.send_rtcm_and_nmea)
@@ -195,8 +205,8 @@ class NTRIPRos(Node):
     for raw_rtcm in self._client.recv_rtcm():
       self._rtcm_pub.publish(self._create_rtcm_message(raw_rtcm))
 
-    # Send cached NMEA data if connected (skip during reconnect to avoid log spam)
-    if self._latest_nmea is not None and not self._client.reconnecting:
+    # Send cached NMEA data if enabled and connected (skip during reconnect to avoid log spam)
+    if self._send_nmea and self._latest_nmea is not None and not self._client.reconnecting:
       self._client.send_nmea(self._latest_nmea)
 
     # Publish a confirmation message to indicate the send_rtcm_and_nmea call

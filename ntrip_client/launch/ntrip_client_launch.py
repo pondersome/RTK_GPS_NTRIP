@@ -22,6 +22,7 @@ def generate_launch_description():
             DeclareLaunchArgument('ntrip_version',         default_value='None'),
             DeclareLaunchArgument('user_agent',            default_value='NTRIP ponderbotics_ntrip_client', description='HTTP User-Agent sent to the caster. Must start with "NTRIP ". rtk2go blocks the stock "NTRIP ntrip_client_ros".'),
             DeclareLaunchArgument('ntrip_server_hz',       default_value='10'), # set to 1 for rtk2go
+            DeclareLaunchArgument('send_nmea',             default_value='true', description='Forward NMEA from the "nmea" topic up to the caster. Needed for virtual/relayed (VRS) mountpoints; set false for plain base stations to skip the subscription and avoid uploading position.'),
             DeclareLaunchArgument('authenticate',          default_value=''),
             DeclareLaunchArgument('username',              default_value=''),
             DeclareLaunchArgument('password',              default_value='none'),
@@ -82,6 +83,10 @@ def generate_launch_description():
 
                       # Not sure if this will be looked at by other ndoes, but this frame ID will be added to the RTCM messages published by this node
                       'rtcm_frame_id': 'odom',
+
+                      # Whether to forward NMEA from the "nmea" topic up to the caster.
+                      # Needed for virtual/relayed (VRS) mountpoints; disable for plain base stations.
+                      'send_nmea': LaunchConfiguration('send_nmea'),
 
                       # Optional parameters that will allow for longer or shorter NMEA messages. Standard max length for NMEA is 82
                       'nmea_max_length': 100,

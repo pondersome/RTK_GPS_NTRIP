@@ -50,6 +50,7 @@ Connection:
 - **mountpoint**: Mountpoint to connect to on the NTRIP server
 - **ntrip_version**: Value sent in the `Ntrip-Version` request header. Default: `None` (header omitted; NTRIP rev1/ICY request)
 - **user_agent**: HTTP `User-Agent` sent to the caster. **Must start with `NTRIP `.** Default: `NTRIP ponderbotics_ntrip_client`. Do not use the stock `NTRIP ntrip_client_ros` — rtk2go blocks it (see [rtk2go notes](#rtk2go-and-reconnect-behavior)).
+- **send_nmea**: Whether to forward NMEA from the `nmea` topic up to the caster. Needed for virtual/relayed (VRS) mountpoints. For a plain base station (e.g. rtk2go's fixed mountpoints) set `send_nmea:=false` — the node then skips the `nmea` subscription entirely and never uploads your position. Default: `true`.
 
 Authentication:
 - **authenticate**: Whether to authenticate with the server, or send an unauthenticated request. If `true`, `username` and `password` must be supplied.
@@ -75,7 +76,7 @@ Output / namespacing:
 Topics are relative to the node's namespace (default `ntrip_client`), so by default they appear as `/ntrip_client/<topic>`:
 
 * **rtcm** (publish): RTCM corrections received from the server. Message type depends on `rtcm_message_package` — `rtcm_msgs/msg/Message` by default, or `mavros_msgs/msg/RTCM`. Consumed by GNSS drivers (e.g. ublox_gps, [microstrain_inertial_driver](https://github.com/LORD-MicroStrain/microstrain_inertial)).
-* **nmea** (subscribe): [NMEA sentence messages](http://docs.ros.org/en/api/nmea_msgs/html/msg/Sentence.html) forwarded to the NTRIP server. Needed for virtual/relayed (VRS) mountpoints. The node subscribes to the relative topic `nmea`; remap it (e.g. in the launch file's `remappings`) to your NMEA source if it differs. Note: there is no `nmea_topic` launch argument — passing one has no effect.
+* **nmea** (subscribe): [NMEA sentence messages](http://docs.ros.org/en/api/nmea_msgs/html/msg/Sentence.html) forwarded to the NTRIP server. Needed for virtual/relayed (VRS) mountpoints. The node subscribes to the relative topic `nmea`; remap it (e.g. in the launch file's `remappings`) to your NMEA source if it differs. Set `send_nmea:=false` to disable forwarding entirely (the subscription is then not created). Note: there is no `nmea_topic` launch argument — passing one has no effect.
 * **ntrip_server_hz** (publish): A `std_msgs/String` confirmation published each communication cycle, to help verify compliance with caster usage policies.
 
 ## rtk2go and reconnect behavior

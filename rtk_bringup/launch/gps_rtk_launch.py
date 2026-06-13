@@ -21,7 +21,10 @@ def generate_launch_description():
         DeclareLaunchArgument('port', default_value='2101', description='Port number for the NTRIP server'),
         DeclareLaunchArgument('mountpoint', default_value='VN1', description='Use a mount point near you'),
         DeclareLaunchArgument('ntrip_version', default_value='None', description='NTRIP version to use in the initial HTTP request'),
+        DeclareLaunchArgument('user_agent', default_value='NTRIP ponderbotics_ntrip_client', description='HTTP User-Agent sent to the caster. Must start with "NTRIP ". rtk2go blocks the stock "NTRIP ntrip_client_ros".'),
         DeclareLaunchArgument('ntrip_server_hz', default_value='1', description='RTK2GO will ban you if Hz > 1'),
+        DeclareLaunchArgument('send_nmea', default_value='false', description='Forward NMEA up to the caster. false is correct for fixed-base mountpoints like rtk2go VN1 (they ignore your position and uploading it risks a ban); set true only for VRS/virtual mountpoints, which require it.'),
+        DeclareLaunchArgument('reconnect_attempt_wait_max_seconds', default_value='120', description='Ceiling for the exponential reconnect backoff. Reconnects are persistent (never give up); raise this to reduce footprint during long caster outages (e.g. 600 for rtk2go DDoS/maintenance downtime).'),
         DeclareLaunchArgument('authenticate', default_value='True', description='Enable or disable authentication'),
         DeclareLaunchArgument('username', default_value='realemail@provider.com', description='Replace this with a real email address for authentication'),
         DeclareLaunchArgument('password', default_value='none', description='Password for authentication if needed'),
@@ -69,8 +72,16 @@ def generate_launch_description():
                     # Optional parameter that will set the NTRIP version in the initial HTTP request to the NTRIP caster.
                     'ntrip_version': LaunchConfiguration('ntrip_version'),
 
+                    # User-Agent presented to the caster. Must start with "NTRIP ".
+                    # rtk2go blocks the stock "NTRIP ntrip_client_ros" and refuses such clients with a sourcetable response.
+                    'user_agent': LaunchConfiguration('user_agent'),
+
                     # Frequency to request correction messages. Some servers will sandbox clients that request too often
                     'ntrip_server_hz': LaunchConfiguration('ntrip_server_hz'),
+
+                    # Whether to forward NMEA from the "nmea" topic up to the caster.
+                    # Needed for virtual/relayed (VRS) mountpoints; disable for plain base stations like rtk2go VN1.
+                    'send_nmea': LaunchConfiguration('send_nmea'),
 
                     # If this is set to true, we will read the username and password and attempt to authenticate. If not, we will attempt to connect unauthenticated
                     'authenticate': LaunchConfiguration('authenticate'),
@@ -96,15 +107,17 @@ def generate_launch_description():
                     'nmea_max_length': 100,
                     'nmea_min_length': 3,
 
-                    # Use this parameter to change the type of RTCM message published by the node. Defaults to "mavros_msgs", but we also support "rtcm_msgs"
+                    # Use this parameter to change the type of RTCM message published by the node. Defaults to "rtcm_msgs", but we also support "mavros_msgs"
                     'rtcm_message_package': LaunchConfiguration('rtcm_message_package'),
 
-                    # Will affect how many times the node will attempt to reconnect before exiting, and how long it will wait in between attempts when a reconnect occurs
-                    'reconnect_attempt_max': 10,
-                    'reconnect_attempt_wait_seconds': 5,
+                    # Reconnect backoff: wait doubles from reconnect_attempt_wait_seconds up to
+                    # reconnect_attempt_wait_max_seconds, then holds at that ceiling. Retries are
+                    # persistent (no give-up) so the node recovers from long caster outages on its own.
+                    'reconnect_attempt_wait_seconds': 10, # changed per rtk2go reqs
+                    'reconnect_attempt_wait_max_seconds': LaunchConfiguration('reconnect_attempt_wait_max_seconds'),
 
                     # How many seconds is acceptable in between receiving RTCM. If RTCM is not received for this duration, the node will attempt to reconnect
-                    'rtcm_timeout_seconds': 4
+                    'rtcm_timeout_seconds': 10 # changed per rtk2go reqs
                 }
             ],
             remappings=[
@@ -113,7 +126,9 @@ def generate_launch_description():
             ]
         ),
 
-        # Launch fix2nmea node
+        # Launch fix2nmea node. This publishes NMEA on the "nmea" topic regardless of
+        # send_nmea; when send_nmea is false the ntrip_client simply does not subscribe,
+        # so the NMEA is available locally but is not uploaded to the caster.
         Node(
             package='fix2nmea',
             executable='fix2nmea',
